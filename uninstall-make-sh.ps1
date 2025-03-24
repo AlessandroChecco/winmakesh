@@ -4,53 +4,52 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit 1
 }
 
-# Find Chocolatey dynamically
-$ChocoPath = (Get-Command choco -ErrorAction SilentlyContinue).Source
-$ChocoBinPath = [System.IO.Path]::GetDirectoryName($ChocoPath)
-
-# Paths for sh and make
-$ShExePath = "$ChocoBinPath\sh.exe"
-
-# Uninstall GNU Make
-Write-Host "Uninstalling GNU Make..."
-choco uninstall make -y
-
-# Uninstall BusyBox
-Write-Host "Uninstalling BusyBox..."
-choco uninstall busybox -y
-
-# Remove renamed sh.exe (if it was manually created)
-if (Test-Path $ShExePath) {
-    Remove-Item -Path $ShExePath -Force
-    Write-Host "sh.exe removed."
-} else {
-    Write-Host "sh.exe was not found, skipping."
-}
-
-# Function to remove only specific entries from PATH
+# Function to remove an item from the system PATH safely
 function Remove-FromPath {
     param ([string]$RemovePath)
     $CurrentPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine") -split ";"
-    $NewPath = $CurrentPath -notmatch [regex]::Escape($RemovePath) -join ";"
-    
-    if ($NewPath -ne ($CurrentPath -join ";")) {
-        [System.Environment]::SetEnvironmentVariable("Path", $NewPath, "Machine")
-        Write-Host "Removed $RemovePath from PATH."
+
+    if ($CurrentPath -contains $RemovePath) {
+        $UpdatedPath = $CurrentPath -ne $RemovePath -join ";"
+        [System.Environment]::SetEnvironmentVariable("Path", $UpdatedPath, "Machine")
+        Write-Host "Removed $RemovePath from system PATH."
     } else {
-        Write-Host "$RemovePath was not found in PATH."
+        Write-Host "$RemovePath was not found in the PATH."
     }
 }
 
-# Do not remove Chocolatey path, only custom paths
-Remove-FromPath "$ChocoBinPath"
+# Detect Chocolatey's bin path dynamically
+$ChocoPath = (Get-Command choco -ErrorAction SilentlyContinue).Source
+if (-not $ChocoPath) {
+    Write-Host "Chocolatey is not installed or not in the PATH. Skipping uninstallation steps."
+    exit 1
+}
 
-# Refresh environment variables safely
+$ChocoBinPath = [System.IO.Path]::GetDirectoryName($ChocoPath)
+
+# Uninstall GNU Make and BusyBox via Chocolatey
+Write-Host "Uninstalling GNU Make and BusyBox..."
+choco uninstall make -y
+choco uninstall busybox -y
+
+# Remove manually created sh.exe (if it exists)
+$ShExePath = "$ChocoBinPath\sh.exe"
+if (Test-Path $ShExePath) {
+    Remove-Item -Path $ShExePath -Force
+    Write-Host "Removed manually created sh.exe."
+} else {
+    Write-Host "sh.exe was not found. No manual cleanup needed."
+}
+
+
+# Refresh environment variables
 $RefreshEnvCmd = "$ChocoBinPath\refreshenv.cmd"
 if (Test-Path $RefreshEnvCmd) {
     Write-Host "Refreshing environment variables..."
     & $RefreshEnvCmd
+    Write-Host "Environment refreshed!"
 } else {
-    Write-Host "Warning: refreshenv.cmd not found. Restart your terminal to apply changes."
+    Write-Host "refreshenv.cmd not found. Please restart your terminal to apply changes."
 }
 
-Write-Host "Uninstallation complete!"
+Write-Host "Uninstallation complete. Chocolatey is still installed."
