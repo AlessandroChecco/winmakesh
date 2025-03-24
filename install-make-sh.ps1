@@ -18,21 +18,24 @@ function Add-ToPath {
     }
 }
 
-# Dynamically find Chocolatey path
+# Check if Chocolatey is installed
 $ChocoPath = (Get-Command choco -ErrorAction SilentlyContinue).Source
-if (-not $ChocoPath) {
-    Write-Host "Chocolatey is not installed. Installing..."
+if ($ChocoPath) {
+    Write-Host "Chocolatey is already installed at: $ChocoPath"
+} else {
+    Write-Host "Installing Chocolatey..."
     Set-ExecutionPolicy Bypass -Scope Process -Force
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
     Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-    
-    # After installing Chocolatey, update its path
+
+    # Refresh Chocolatey path after installation
     $ChocoPath = (Get-Command choco -ErrorAction SilentlyContinue).Source
     if (-not $ChocoPath) {
         Write-Host "Error: Chocolatey installation failed. Please install it manually."
         exit 1
     }
 }
+
 
 # Extract Chocolatey bin path dynamically
 $ChocoBinPath = [System.IO.Path]::GetDirectoryName($ChocoPath)
