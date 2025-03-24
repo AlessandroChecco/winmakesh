@@ -1,5 +1,5 @@
 # winmakesh
-make and sh for windows
+make and sh for windows. Once installed you can double click on .sh files to execute them with busybox. You will have access from the console to make and sh (as alias of busybox).
 
 # TO INSTALL
 From Powershell:
